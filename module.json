@@ -1,0 +1,28 @@
+{
+  "id": "planar-soundboard",
+  "title": "Planar Soundboard",
+  "description": "A GM soundboard built on Foundry playlists: prepared soundscapes with music, ambience, scatter sounds and pads, crossfades, narration ducking, live sound filters per player, and cue lists you fire with one button or from a journal page.",
+  "version": "1.2.0",
+  "authors": [
+    { "name": "rkeytech" }
+  ],
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "esmodules": ["scripts/main.mjs"],
+  "styles": ["styles/soundboard.css"],
+  "languages": [
+    { "lang": "en", "name": "English", "path": "lang/en.json" },
+    { "lang": "el", "name": "Ελληνικά", "path": "lang/el.json" }
+  ],
+  "socket": true,
+  "url": "https://github.com/zacharatos/planar-soundboard",
+  "manifest": "https://github.com/zacharatos/planar-soundboard/releases/latest/download/module.json",
+  "download": "https://github.com/zacharatos/planar-soundboard/releases/download/v1.2.0/module.zip",
+  "bugs": "https://github.com/zacharatos/planar-soundboard/issues",
+  "readme": "https://github.com/zacharatos/planar-soundboard#readme",
+  "changelog": "https://github.com/zacharatos/planar-soundboard/blob/main/CHANGELOG.md",
+  "license": "https://github.com/zacharatos/planar-soundboard/blob/main/LICENSE",
+  "flags": {}
+}
