@@ -164,9 +164,10 @@ Hooks.on("updateScene", (scene, changes) => {
 Hooks.on("combatStart", () => engine.onCombatStart());
 Hooks.on("deleteCombat", combat => { if (combat.started) engine.onCombatEnd(); });
 
-// Late joiners get the current narrate/muffle state.
+// Late joiners get the current narrate/muffle state, and preload what's playing plus the global pads.
 Hooks.on("userConnected", (user, connected) => {
-  if (connected && isActiveGM() && user.id !== game.user.id) setTimeout(() => engine.resyncFx(), 4000);
+  if (!connected || !isActiveGM() || user.id === game.user.id) return;
+  setTimeout(() => { engine.resyncFx(); engine.preloadForUser(user.id); }, 4000);
 });
 
 // A button in the Playlists sidebar.

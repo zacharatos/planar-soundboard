@@ -3,6 +3,22 @@
 All notable changes to this module. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 The release workflow uses the section matching the tag as the GitHub release notes, so keep the `## [x.y.z]` headings exact.
 
+## [1.3.0]
+
+Less load on the server's upload during play: players' connections stay smoother.
+
+### Added
+- **Automatic preload.** The cue the GO pointer sits on is preloaded on every client (5 s after the previous cue fired, so it doesn't compete with that cue's sounds). A soundscape's pads and scatter sounds are preloaded 5 s after it starts. A player who joins or reloads gets the active pads and the global pads.
+- **Heavy-file warning.** The Preload button now names files that are uncompressed (`.wav`, `.flac`, `.aiff`) or larger than 8 MB, the ones that make everyone's connection lag while players download them.
+
+### Changed
+- **Preload loads one file at a time on each client** and skips files that client already loaded, instead of firing every download at once. It goes over the module socket now; only a GM can ask.
+
+### Fixed
+- **Narration ducking no longer restarts a fade every second** on every player's browser. It fades again only when the target volume changes (e.g. the track's volume is moved) or the sound drifted away after our fade ended, at most three times per sound.
+- **Combat automation runs on the active GM only.** With two GM tabs open, Begin Combat ran twice and could make the end of combat return to the combat music.
+- Soundscapes are no longer copied and re-normalised on every lookup; they're cached until the setting changes (the panel refreshes faster with many scapes).
+
 ## [1.2.0]
 
 First release from the GitHub repository.

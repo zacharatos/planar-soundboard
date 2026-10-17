@@ -1,7 +1,7 @@
 // Planar Soundboard — Cues: prepared bundles of actions, run in order with GO,
 // from journal links (@Cue[...]) or from macros.
 
-import { MODULE_ID, GLOBAL_ID, randomId, getSetting, setSetting, findScape, getState, clamp } from "./store.mjs";
+import { MODULE_ID, GLOBAL_ID, randomId, getSetting, setSetting, findScape, getState, clamp, scapePaths, isActiveGM } from "./store.mjs";
 import * as engine from "./engine.mjs";
 import { PRESETS } from "./fxgraph.mjs";
 import { t, info, warn } from "./i18n.mjs";
@@ -124,6 +124,33 @@ function cancelFollow() {
   followTimer = null;
 }
 
+/** Every audio file a cue can start: its soundscapes (switch / layer on), pads and played files. */
+export function cuePaths(cue) {
+  const out = new Set();
+  for (const a of cue?.actions ?? []) {
+    if (a.type === "scape" && a.mode !== "layerOff") {
+      const sc = findScape(a.scapeId);
+      if (sc) for (const p of scapePaths(sc)) out.add(p);
+    } else if (a.type === "pad") {
+      const pad = findScape(a.scapeId || GLOBAL_ID)?.pads.find(p => p.id === a.padId);
+      for (const p of pad?.sources ?? []) out.add(p);
+    } else if (a.type === "play" && a.src) out.add(a.src);
+  }
+  return [...out];
+}
+
+/** Preload the cue the GO pointer now sits on, so its sounds are ready when it fires. */
+const NEXT_CUE_DELAY_MS = 5000;
+let preloadTimer = null;
+function preloadNext(listId, index, delay = 0) {
+  clearTimeout(preloadTimer);
+  if (!isActiveGM()) return;
+  preloadTimer = setTimeout(() => {
+    const cue = getCueLists().find(l => l.id === listId)?.cues[index];
+    if (cue) engine.preloadPaths(cuePaths(cue));
+  }, delay);
+}
+
 /** Execute a cue's actions in order. */
 export async function fireCue(cue) {
   if (!cue) return;
@@ -188,6 +215,8 @@ export async function fireAt(listId, index) {
   if (!cue) return;
   await setRun({ listId, index: index + 1, last: index });
   await fireCue(cue);
+  // The next cue's files, once this cue's own sounds have had the bandwidth.
+  preloadNext(listId, index + 1, NEXT_CUE_DELAY_MS);
   if (cue.autoFollow != null && index + 1 < list.cues.length) {
     followTimer = setTimeout(() => {
       const run = getRun();
@@ -212,7 +241,9 @@ export async function standby(listId, index) {
   const list = getCueLists().find(l => l.id === listId);
   if (!list) return;
   const run = getRun();
-  await setRun({ listId, index: Math.max(0, Math.min(index, list.cues.length)), last: run.listId === listId ? run.last : null });
+  const next = Math.max(0, Math.min(index, list.cues.length));
+  await setRun({ listId, index: next, last: run.listId === listId ? run.last : null });
+  preloadNext(listId, next);
 }
 
 export async function back() {

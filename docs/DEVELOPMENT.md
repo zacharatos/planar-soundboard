@@ -37,6 +37,7 @@ This runs a syntax check on every `.mjs` file, then:
 - `manifest.test.mjs`: manifest fields, referenced files exist, `en.json` and `el.json` have the same keys and placeholders, every key used in the code exists, no hard-coded notifications.
 - `soundscapes.test.mjs`: switching, crossfades in one update, shared sounds kept, layers and sticky layers, combat and scene automation, pads, narrate, silence, panel and editor rendering.
 - `features.test.mjs`: filters (targets, hold, per-scape), cue lists (GO, auto-follow, back, firing by name), uploads, the journal enricher, the cue tab and cue editor.
+- `performance.test.mjs`: preload over the socket (dedupe, GM-only, addressed), what a joining player gets, cue preload paths, the heavy-file check, the soundscape cache, ducking without repeated fades, combat automation on the active GM only.
 - `tools.test.mjs`: the release tooling.
 
 The rendering tests use the real `lang/en.json` and fail if any key is missing.
@@ -85,7 +86,12 @@ Narrate and cues
 - *Run macro* action runs the macro.
 
 Other
-- Preload with a player connected: their network tab shows the files loading.
+- Preload with a player connected: their network tab shows the files loading **one after another**, not all at once. A scape with a `.wav` or a file over 8 MB: a warning names the heavy files.
+- Put the cue pointer on a cue (click it, or fire the one before): within ~5 s the player's network tab shows that cue's files loading. Firing it then plays without a download.
+- Switch to a scape with pads and scatter: ~5 s later the player's network tab loads the pad and scatter files; pressing a pad then plays at once.
+- A player reloads while a scape is active: a few seconds after they're back, their network tab loads the active pads and the global pads.
+- Narrate on for a minute with music playing: in the player's console, no repeated volume fades (the music stays steady at the ducked level). Change the track's volume in the panel while narrating: it re-ducks to the new level.
+- Two GM tabs open, Begin Combat: the combat scape starts once, and ending combat returns to the previous scape (not to the combat scape).
 - Export, delete a scape, Import: it comes back. Cue lists come back too.
 - Switch Foundry's language to Ελληνικά: the panel, editors, settings and keybindings are in Greek.
 - Log in as a player: no Soundboard button; `PlanarSoundboard.open()` says it's GM-only.
@@ -97,7 +103,9 @@ Other
 - **Data shape**: soundscapes and cue lists are arrays in world settings (`soundscapes`, `cueLists`), passed through `normScape` / `normCueList` on every read, so new fields need a default there. If a shape changes in a way defaults can't cover, write a migration: people have scapes built with older versions.
 - **Playback** goes through Playlist documents (`executePlan` in `engine.mjs`): set `playing`, `fade` and `volume` in one `Playlist#update` so Foundry syncs and fades it on every client. One-shots use `AudioHelper.play(…, true)`.
 - **Filters** are inserted with `Sound#applyEffects`. Something else may replace the pipeline, so `filters.mjs` re-checks every 500 ms while a filter is on.
-- **Preload** must use `game.audio.preload(src)` (asks other clients); `AudioHelper.preloadSound` only loads locally.
+- **Preload** goes over the module socket (`preloadPaths` in `engine.mjs`): the GM sends a list of files, each client loads them with `AudioHelper.preloadSound` (local only) one at a time and skips files it already has. Automatic preloads: the next cue on the GO pointer, a scape's pads and scatter 5 s after it starts, and the active pads for a player who joins. Never preload on a timer: every player downloads every file from the server, and on a home server that shares the house upload, bursts are what make everyone's connection lag.
+- **Soundscapes** are read through a cache rebuilt when the `soundscapes` setting changes (`invalidateScapes` in its `onChange`); `getAllScapes` / `findScape` return copies, so callers may change what they get.
+- **Ducking** remembers the volume it aimed for on each sound and fades again only when that target changes or the sound drifted away after our fade finished (at most 3 corrections per sound).
 
 ## Versions
 

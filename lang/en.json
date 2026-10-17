@@ -125,6 +125,7 @@
       "NoCue": "no cue “{name}”.",
       "PadEmpty": "pad “{name}” has no sounds.",
       "Preloading": "preloading {n} sound(s) for “{name}” on all clients.",
+      "HeavyFiles": "“{name}” has {n} heavy file(s) for players to download: {files}. Convert them to OGG (96–128 kbps) to keep everyone's connection smooth.",
       "NoCueList": "no cue list yet. Create one in the Cues tab.",
       "CueListEnd": "end of “{name}”.",
       "CueActionFailed": "cue “{cue}”: {action} failed ({error}).",

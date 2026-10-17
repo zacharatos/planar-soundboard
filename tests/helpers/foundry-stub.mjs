@@ -102,7 +102,7 @@ globalThis.game = {
     async set(m, k, v) { settings.set(k, structuredClone(v)); defs.get(k)?.onChange?.(v); return v; }
   },
   settingDefs: defs,
-  socket: { on() {}, emit(ch, m) { LOG.push({ socket: m.action }); } },
+  socket: { on(ch, f) { this.handler = f; }, emit(ch, m) { LOG.push({ socket: m.action, msg: m }); } },
   audio: { playing: new Map(), async preload(p) { LOG.push({ preload: p }); } },
   keybindings: { registered: [], register(m, k, d) { this.registered.push({ key: k, ...d }); } },
   modules: new Map([["planar-soundboard", {}]])
@@ -147,6 +147,7 @@ globalThis.foundry = {
   },
   audio: { AudioHelper: {
     play: async (d, broadcast) => { LOG.push({ oneShot: d.src, broadcast, channel: d.channel }); return { duration: 1.2, stop() {} }; },
+    preloadSound: async src => { LOG.push({ localPreload: src }); },
     getDefaultSoundName: p => p.split("/").pop()
   } },
   applications: {

@@ -4,10 +4,11 @@
 // Narrate (ducking) and Muffle are client-side effects driven over the module socket.
 
 import { normFilterSpec, filterId, receiveFilters } from "./filters.mjs";
+import { heaviness, describeHeavy } from "./audio-check.mjs";
 import { t, info, warn, error } from "./i18n.mjs";
 import {
   MODULE_ID, GLOBAL_ID, AudioHelperCls, channelOf, resolve, randomId, isActiveGM,
-  getSetting, getState, setState, findScape, getScapes, activeScapes, getGlobalScape, scapePaths
+  getSetting, getState, setState, findScape, getScapes, activeScapes, getGlobalScape, scapePaths, oneShotPaths
 } from "./store.mjs";
 
 const SOCKET = `module.${MODULE_ID}`;
@@ -180,6 +181,7 @@ async function _activate(idOrName, { additive = false, fadeMs = null, keepCombat
     await setState(st);
     syncScapeFilters(fade);
     startScatter(scape);
+    preloadOneShotsSoon([scape]);
     Hooks.callAll(`${MODULE_ID}.activate`, scape, { additive: true });
     return;
   }
@@ -205,6 +207,7 @@ async function _activate(idOrName, { additive = false, fadeMs = null, keepCombat
   syncScapeFilters(fade);
   for (const old of activeScapes(st)) if (!keep.some(k => k.id === old.id)) stopScatter(old.id);
   for (const k of keep) startScatter(k);
+  preloadOneShotsSoon(keep);
   Hooks.callAll(`${MODULE_ID}.activate`, scape, { additive: false });
 }
 
@@ -356,12 +359,82 @@ export function resumeScatter() {
 /*  Preload                                 */
 /* ---------------------------------------- */
 
+// Preload goes over the module socket: each client loads the files itself, one at a time, and
+// skips files it already has. One file at a time keeps the server's upload from being swamped.
+
+const preloaded = new Set();   // paths this client has loaded (or is loading)
+let preloadChain = Promise.resolve();
+
+function preloadLocal(paths) {
+  const fresh = paths.filter(p => !preloaded.has(p));
+  for (const p of fresh) preloaded.add(p);
+  if (!fresh.length) return preloadChain;
+  preloadChain = preloadChain.then(async () => {
+    for (const p of fresh) {
+      try { await AudioHelperCls().preloadSound(p); }
+      catch (err) { preloaded.delete(p); console.warn(`${MODULE_ID} | preload failed`, p, err); }
+    }
+  });
+  return preloadChain;
+}
+
+/**
+ * Ask clients to preload audio files.
+ * @param {string[]} paths
+ * @param {object} [opts]
+ * @param {string[]|null} [opts.to]  user ids; null = everyone (this client included)
+ * @returns {number} how many distinct files were asked for
+ */
+export function preloadPaths(paths, { to = null } = {}) {
+  const list = [...new Set((paths ?? []).filter(Boolean))];
+  if (!list.length || !game.user?.isGM) return 0;
+  game.socket.emit(SOCKET, { action: "preload", from: game.user.id, paths: list, to });
+  if (!to || to.includes(game.user.id)) preloadLocal(list);
+  return list.length;
+}
+
+/** The Preload button: everything the scape can play, on every client, plus a heavy-file check. */
 export async function preloadScape(scape) {
   const paths = scapePaths(scape);
-  for (const p of paths) {
-    try { await game.audio.preload(p); } catch (err) { console.warn(`${MODULE_ID} | preload failed`, p, err); }
-  }
+  preloadPaths(paths);
   info("Notify.Preloading", { n: paths.length, name: scape.name });
+  const heavy = await findHeavy(paths);
+  if (heavy.length) warn("Notify.HeavyFiles", { name: scape.name, n: heavy.length, files: heavy.slice(0, 3).map(describeHeavy).join(", ") });
+}
+
+/** Files that are uncompressed or bigger than the limit (asks the server for sizes, GM side). */
+export async function findHeavy(paths) {
+  const out = [];
+  for (const path of paths) {
+    let bytes = null;
+    if (!heaviness(path)) {
+      try {
+        const res = await fetch(path, { method: "HEAD" });
+        const len = Number(res.headers?.get?.("content-length"));
+        if (res.ok && Number.isFinite(len) && len > 0) bytes = len;
+      } catch { /* size unknown: not flagged */ }
+    }
+    if (heaviness(path, bytes)) out.push({ path, bytes });
+  }
+  return out;
+}
+
+/** After a switch: pads and scatter of these scapes, once the switch itself has had its bandwidth. */
+const PRELOAD_DELAY_MS = 5000;
+function preloadOneShotsSoon(scapes) {
+  if (!isActiveGM()) return;
+  const paths = scapes.flatMap(oneShotPaths);
+  if (paths.length) setTimeout(() => preloadPaths(paths), PRELOAD_DELAY_MS);
+}
+
+/**
+ * A player just connected: the pads and scatter of what's active plus the global pads, for that
+ * player only. (Music and ambience already playing reach them through Foundry's playlists.)
+ */
+export function preloadForUser(userId) {
+  if (!isActiveGM() || !userId) return 0;
+  const scapes = [...activeScapes(), getGlobalScape()].filter(Boolean);
+  return preloadPaths(scapes.flatMap(oneShotPaths), { to: [userId] });
 }
 
 /* ---------------------------------------- */
@@ -519,6 +592,11 @@ function handleSocket(msg) {
   if (!msg?.action) return;
   if (msg.action === "fx") return applyFxMessage(msg);
   if (msg.action === "stopSrc") return stopLocalSrc(msg.src, msg.fadeMs);
+  if (msg.action === "preload") {
+    if (!game.users.get(msg.from)?.isGM) return;
+    if (msg.to && !msg.to.includes(game.user.id)) return;
+    if (Array.isArray(msg.paths)) preloadLocal(msg.paths.filter(p => typeof p === "string"));
+  }
 }
 
 function sameSrc(a, b) {
@@ -558,21 +636,32 @@ function duckablePlaying() {
   return playingSounds().filter(ps => DUCKABLE.has(channelOf(ps)) && ps.sound?.playing);
 }
 
+// How often the 1 s check may correct a sound whose volume drifted away from our duck (something
+// else faded it, e.g. Foundry's own fade-in) before giving up on that sound.
+const MAX_DUCK_FIXES = 3;
+
 function applyDuck(fadeMs, force) {
   const factors = Object.values(local.ducks);
   const factor = factors.length ? Math.min(...factors) : 1;
+  const now = Date.now();
   for (const ps of duckablePlaying()) {
     const snd = ps.sound;
-    const target = (ps.volume ?? 0.5) * factor;
+    const base = ps.volume ?? 0.5;
     if (factor === 1) {
-      if (snd._psDucked) { snd.fade(target, { duration: fadeMs }); delete snd._psDucked; }
+      if (snd._psDuck) { snd.fade(base, { duration: fadeMs }); delete snd._psDuck; }
       continue;
     }
-    const current = Number(snd.volume);
-    if (force || !snd._psDucked || (Number.isFinite(current) && Math.abs(current - target) > 0.02)) {
-      snd._psDucked = true;
-      snd.fade(target, { duration: fadeMs });
+    const target = base * factor;
+    const d = snd._psDuck;
+    let fade = force || !d || Math.abs(d.target - target) > 0.001;
+    if (!fade && now > d.until && d.fixes < MAX_DUCK_FIXES) {
+      // Our own fade has finished: only step in if the volume really is somewhere else.
+      const current = Number(snd.volume);
+      if (Number.isFinite(current) && Math.abs(current - target) > 0.02) { fade = true; d.fixes++; }
     }
+    if (!fade) continue;
+    snd._psDuck = { target, until: now + fadeMs + 250, fixes: d && Math.abs(d.target - target) <= 0.001 ? d.fixes : 0 };
+    snd.fade(target, { duration: fadeMs });
   }
 }
 
@@ -591,7 +680,7 @@ function findScapeForScene(sceneId) {
 }
 
 export function onCombatStart() {
-  if (!game.user.isGM || !getSetting("combatAuto")) return;
+  if (!isActiveGM() || !getSetting("combatAuto")) return;
   queue(async () => {
     const st = getState();
     const current = findScape(st.base);

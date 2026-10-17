@@ -50,7 +50,7 @@ Each scape also has a colour, icon, card image, group, GM notes (the card toolti
 - **Silence**: fade everything out.
 - **Now playing**: live volume, next track and fade-out for every sound.
 - **Alt+1…9**: the first nine pads of the active scapes, then the global pads (each pad shows its key).
-- **Preload** (cloud icon on a card): every player starts downloading that scape's files now.
+- **Preload** (cloud icon on a card): every player starts downloading that scape's files now, one at a time, and you're warned about files that are heavy to download (`.wav`, `.flac`, over 8 MB). The next cue on the GO pointer, a scape's pads and scatter, and the pads for a player who joins are preloaded by themselves.
 - **Global pads**: pads that are always there, whatever is playing.
 
 ## Planar Filters

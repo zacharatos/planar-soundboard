@@ -136,7 +136,8 @@ export function normScape(s = {}) {
 
 export function registerSettings(onChange) {
   const reg = (key, data) => game.settings.register(MODULE_ID, key, data);
-  reg("soundscapes", { scope: "world", config: false, type: Array, default: [], onChange });
+  reg("soundscapes", { scope: "world", config: false, type: Array, default: [],
+    onChange: value => { invalidateScapes(); onChange?.(value); } });
   reg("state", { scope: "world", config: false, type: Object,
     default: { base: null, overlays: [], combatReturn: null }, onChange });
   reg("combatScape", { scope: "world", config: false, type: String, default: "", onChange });
@@ -196,9 +197,17 @@ export const setSetting = (key, value) => game.settings.set(MODULE_ID, key, valu
 /*  Soundscape CRUD                         */
 /* ---------------------------------------- */
 
+// The normalised soundscapes, built once and rebuilt only when the setting changes (its onChange
+// runs on every client). Callers always get copies, so they may change what they receive.
+let scapeCache = null;
+export function invalidateScapes() { scapeCache = null; }
+function cachedScapes() {
+  scapeCache ??= (getSetting("soundscapes") ?? []).map(s => normScape(foundry.utils.deepClone(s)));
+  return scapeCache;
+}
+
 export function getAllScapes() {
-  const raw = foundry.utils.deepClone(getSetting("soundscapes") ?? []);
-  return raw.map(normScape);
+  return foundry.utils.deepClone(cachedScapes());
 }
 
 /** Soundscapes shown as cards (the global pad bank is excluded). */
@@ -207,10 +216,12 @@ export function getScapes() {
 }
 
 export function getGlobalScape() {
-  return getAllScapes().find(s => s.isGlobal) ?? null;
+  const hit = cachedScapes().find(s => s.isGlobal);
+  return hit ? foundry.utils.deepClone(hit) : null;
 }
 
 export async function saveAllScapes(list) {
+  invalidateScapes();
   return setSetting("soundscapes", list.map(normScape));
 }
 
@@ -233,10 +244,14 @@ export async function ensureGlobalScape() {
 
 export function findScape(idOrName) {
   if (!idOrName) return null;
-  const all = getAllScapes();
-  if (typeof idOrName === "object") return all.find(s => s.id === idOrName.id) ?? null;
-  const key = String(idOrName).toLowerCase();
-  return all.find(s => s.id === idOrName) ?? all.find(s => s.name.toLowerCase() === key) ?? null;
+  const all = cachedScapes();
+  let hit;
+  if (typeof idOrName === "object") hit = all.find(s => s.id === idOrName.id);
+  else {
+    const key = String(idOrName).toLowerCase();
+    hit = all.find(s => s.id === idOrName) ?? all.find(s => s.name.toLowerCase() === key);
+  }
+  return hit ? foundry.utils.deepClone(hit) : null;
 }
 
 export function getState() {
@@ -275,6 +290,12 @@ export function scapePaths(scape) {
   for (const a of scape.ambience) add(resolve(a.soundUuid)?.path);
   for (const l of [...scape.pads, ...scape.scatter]) l.sources.forEach(add);
   return [...paths];
+}
+
+/** The one-shot files of a scape (pads and scatter): fetched by players when they first fire. */
+export function oneShotPaths(scape) {
+  if (!scape) return [];
+  return [...new Set([...scape.pads, ...scape.scatter].flatMap(l => l.sources).filter(Boolean))];
 }
 
 /**
