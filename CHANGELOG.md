@@ -3,6 +3,11 @@
 All notable changes to this module. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 The release workflow uses the section matching the tag as the GitHub release notes, so keep the `## [x.y.z]` headings exact.
 
+## [1.3.1]
+
+### Changed
+- CI and release workflows use `actions/checkout@v5` and `actions/setup-node@v5`; CI runs with read-only repository permissions. Nothing changes in Foundry.
+
 ## [1.3.0]
 
 Less load on the server's upload during play: players' connections stay smoother.
