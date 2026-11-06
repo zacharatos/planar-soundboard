@@ -3,6 +3,11 @@
 All notable changes to this module. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 The release workflow uses the section matching the tag as the GitHub release notes, so keep the `## [x.y.z]` headings exact.
 
+## [1.3.2]
+
+### Fixed
+- **The Soundscapes tab no longer falls apart when Planar Store is enabled.** Store's stylesheet has an unscoped `.ps-main` rule (a 3-column grid) that also matched the Soundboard's main column, so the tabs, search row, group headings and cards were laid out side by side. Every Soundboard style rule is now scoped under the window class `.ps-app`, the main column pins its own layout, and a test keeps new rules scoped.
+
 ## [1.3.1]
 
 ### Changed

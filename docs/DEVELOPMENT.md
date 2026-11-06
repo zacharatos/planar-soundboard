@@ -94,6 +94,7 @@ Other
 - Two GM tabs open, Begin Combat: the combat scape starts once, and ending combat returns to the previous scape (not to the combat scape).
 - Export, delete a scape, Import: it comes back. Cue lists come back too.
 - Switch Foundry's language to Ελληνικά: the panel, editors, settings and keybindings are in Greek.
+- With Planar Store (and any other module using `ps-` classes) enabled: the Soundscapes tab shows tabs, the search row, the hint, then each group heading above its cards, one under another; the editors and the cue editor look as without it.
 - Log in as a player: no Soundboard button; `PlanarSoundboard.open()` says it's GM-only.
 
 ## Changing things
