@@ -52,5 +52,5 @@ Don't write a commit message unless he asks for one. If he does, offer it as a s
 - Soundscapes and cue lists live in world settings and pass through `normScape` / `normCueList` on every read; new fields need a default there, and a shape change needs a migration.
 - Read "Changing things" in `docs/DEVELOPMENT.md` (playback through Playlist documents, filters, preload) before touching audio.
 - Every player downloads each audio file from the server: keep network traffic in mind (preload ahead of time, one file at a time, never on a timer).
-- Version numbers in `module.json`, `package.json` and `CHANGELOG.md`: only change them when asked.
+- **Versions:** change them only when asked (or when the task is a release). A version change updates every reference in the same change: `module.json` (`version` and the `download` URL's `vX.Y.Z`), `package.json` and `package-lock.json` (`version`), a `## [X.Y.Z]` section at the top of `CHANGELOG.md`, and any version a README or doc names. Follow semver: a new feature bumps the minor, a fix the patch.
 - Never add campaign content, publisher text, art or audio to the repo.
