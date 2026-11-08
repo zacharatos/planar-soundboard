@@ -96,6 +96,7 @@ Other
 - Switch Foundry's language to Ελληνικά: the panel, editors, settings and keybindings are in Greek.
 - With Planar Store (and any other module using `ps-` classes) enabled: the Soundscapes tab shows tabs, the search row, the hint, then each group heading above its cards, one under another; the editors and the cue editor look as without it.
 - Log in as a player: no Soundboard button; `PlanarSoundboard.open()` says it's GM-only.
+- In the console: `PlanarSoundboard.scapes()` lists every soundscape (not the global pads) and `PlanarSoundboard.cues()` every cue with its list's name.
 
 ## Changing things
 

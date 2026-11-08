@@ -106,6 +106,16 @@ test("uploads: dropping files on a pad bank creates one pad per file", async () 
   assert.ok(store.findScape("A").pads.some(pd => pd.sources[0] === "soundboard-uploads/tavern/bell.mp3"));
 });
 
+test("API: scapes() and cues() list what exists (Planar Codex checks names with them)", async () => {
+  await cues.upsertCueList(list);
+  const api = globalThis.PlanarSoundboard;
+  assert.deepEqual(api.scapes().map(s => s.name).sort(), ["Crypt", "Tavern"]);
+  assert.ok(api.scapes().every(s => s.id && s.name !== "__global__"));
+  const c = api.cues();
+  assert.deepEqual(c.map(x => x.name), ["Open", "Door", "Quiet", "End"]);
+  assert.ok(c.every(x => x.id && x.list === "Session 1"));
+});
+
 test("journal links: the @Cue / @Scape enricher is registered", () => {
   const enr = CONFIG.TextEditor.enrichers[0];
   assert.ok(enr);

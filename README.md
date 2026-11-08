@@ -105,6 +105,8 @@ PlanarSoundboard.go();                                   // next cue of the curr
 PlanarSoundboard.stopAll({ fade: 5 });
 PlanarSoundboard.play("sounds/thunder.ogg", { volume: 0.9, channel: "environment" });
 PlanarSoundboard.open();
+PlanarSoundboard.scapes();                               // [{id, name}] of every soundscape
+PlanarSoundboard.cues();                                 // [{id, name, list}] of every cue
 ```
 
 The same object is `game.modules.get("planar-soundboard").api`. Hooks for other modules: `planar-soundboard.activate` (scape, `{additive}`), `planar-soundboard.fxChanged`, `planar-soundboard.cuesChanged`.

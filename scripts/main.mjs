@@ -77,6 +77,10 @@ const api = {
   play: (src, opts = {}) => engine.playOneShot(src, opts),
   /** Names of all soundscapes. */
   list: () => getScapes().map(s => s.name),
+  /** All soundscapes: [{id, name}] (the global pads not included). For other modules, e.g. Planar Codex. */
+  scapes: () => getScapes().map(s => ({ id: s.id, name: s.name })),
+  /** The cues of every cue list: [{id, name, list}]. */
+  cues: () => cues.getCueLists().flatMap(l => l.cues.map(c => ({ id: c.id, name: c.name, list: l.name }))),
   /** Current state. */
   state: () => ({ ...getState(), ...engine.fxState() }),
   editCues(listName) {

@@ -1,6 +1,6 @@
 {
   "name": "planar-soundboard",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "private": true,
   "description": "Development tooling for the Planar Soundboard Foundry VTT module (the module itself has no dependencies).",
   "type": "module",

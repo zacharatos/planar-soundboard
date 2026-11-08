@@ -3,6 +3,11 @@
 All notable changes to this module. Format follows [Keep a Changelog](https://keepachangelog.com/); versions follow [SemVer](https://semver.org/).
 The release workflow uses the section matching the tag as the GitHub release notes, so keep the `## [x.y.z]` headings exact.
 
+## [1.4.0]
+
+### Added
+- API: `scapes()` lists the soundscapes as `{id, name}`, and `cues()` the cues of every list as `{id, name, list}`. Planar Codex uses them to tell which `@Scape` / `@Cue` buttons in the notes have something to play yet.
+
 ## [1.3.2]
 
 ### Fixed
